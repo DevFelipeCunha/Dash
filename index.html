@@ -3,296 +3,258 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CTEL Analytics - Gestão de Incidentes</title>
+    <title>CTEL Analytics - Cloud Management</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script>
-        tailwind.config = {
-            darkMode: 'class',
-        }
+        tailwind.config = { darkMode: 'class' }
     </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; transition: background-color 0.3s ease; }
+        body { font-family: 'Inter', sans-serif; }
         .glass-card {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(226, 232, 240, 0.8);
-            transition: all 0.3s ease;
         }
         .dark .glass-card {
             background: rgba(30, 41, 59, 0.8);
             border-color: rgba(71, 85, 105, 0.5);
             color: #f1f5f9;
         }
-        .sidebar { background: #0f172a; transition: width 0.3s ease; }
-        .custom-scroll::-webkit-scrollbar { width: 6px; }
-        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        .dark .custom-scroll::-webkit-scrollbar-thumb { background: #475569; }
-
+        .sidebar { background: #1e293b; }
         .nav-link.active {
-            background: rgba(37, 99, 235, 0.2);
+            background: rgba(59, 130, 246, 0.2);
             color: #60a5fa;
-            border: 1px solid rgba(37, 99, 235, 0.3);
+            border-left: 4px solid #3b82f6;
         }
+        #loader {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 4px;
+            background: #3b82f6;
+            z-index: 100;
+            animation: loading 2s infinite;
+        }
+        @keyframes loading {
+            0% { width: 0; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
     </style>
 </head>
-<body class="flex h-screen overflow-hidden bg-slate-100 dark:bg-slate-950">
+<body class="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
 
-    <!-- Sidebar Lateral -->
+    <div id="loader"></div>
+
+    <!-- Sidebar -->
     <aside class="sidebar w-64 hidden md:flex flex-col text-slate-300">
-        <div class="p-6 text-center border-b border-slate-800">
-            <div class="flex items-center justify-center gap-3 text-white mb-2">
-                <i class="fas fa-tower-broadcast text-2xl text-blue-500"></i>
+        <div class="p-6 border-b border-slate-700/50">
+            <div class="flex items-center gap-3 text-white">
+                <i class="fas fa-chart-line text-blue-500 text-2xl"></i>
                 <span class="font-bold text-xl tracking-tight">CTEL Admin</span>
             </div>
-            <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-slate-700">GESTÃO LOCAL</span>
         </div>
-        <div class="p-6 flex-1">
-            <nav class="space-y-2">
-                <button onclick="switchTab('dashboard')" id="btn-dashboard" class="nav-link w-full flex items-center gap-3 p-3 rounded-lg transition active">
-                    <i class="fas fa-chart-pie"></i> Painel Geral
-                </button>
-                <button onclick="switchTab('reportes')" id="btn-reportes" class="nav-link w-full flex items-center gap-3 p-3 hover:bg-slate-800 rounded-lg transition">
-                    <i class="fas fa-file-invoice"></i> Histórico
-                </button>
-            </nav>
-        </div>
-        <div class="p-6 border-t border-slate-800 text-xs">
-            <button onclick="exportToCSV()" class="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 p-2 rounded transition mb-4">
-                <i class="fas fa-file-export"></i> Exportar CSV
+        
+        <nav class="flex-1 p-4 space-y-2">
+            <button onclick="switchTab('dashboard')" id="btn-dashboard" class="nav-link active w-full flex items-center gap-3 p-3 rounded-lg transition">
+                <i class="fas fa-th-large"></i> Dashboard
             </button>
-            <p class="text-slate-500">© 2026 CTEL Analytics</p>
+            <button onclick="switchTab('reportes')" id="btn-reportes" class="nav-link w-full flex items-center gap-3 p-3 rounded-lg transition hover:bg-slate-800">
+                <i class="fas fa-list-ul"></i> Histórico
+            </button>
+        </nav>
+
+        <div class="p-6 border-t border-slate-700/50 text-xs space-y-4">
+            <button onclick="loadData()" class="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded transition">
+                <i class="fas fa-sync"></i> Atualizar Nuvem
+            </button>
+            <p class="text-slate-500 text-center">© 2026 CTEL Analytics</p>
         </div>
     </aside>
 
-    <!-- Área Principal -->
+    <!-- Main Content -->
     <main class="flex-1 flex flex-col overflow-hidden">
-
+        
         <!-- Header -->
-        <header class="h-16 glass-card flex items-center justify-between px-8 z-10 dark:bg-slate-900/90 dark:text-white">
-            <h1 id="pageTitle" class="font-semibold text-slate-700 dark:text-slate-200">Painel de Monitoramento</h1>
-            <div class="flex items-center gap-6">
-                <button onclick="toggleDarkMode()" class="text-slate-500 dark:text-slate-400 hover:text-blue-500 transition-colors p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800">
-                    <i id="themeIcon" class="fas fa-moon text-lg"></i>
+        <header class="h-16 glass-card flex items-center justify-between px-8 z-10">
+            <h1 id="pageTitle" class="font-bold text-lg">Painel de Monitoramento</h1>
+            <div class="flex items-center gap-4">
+                <span id="currentTime" class="text-sm font-mono text-slate-500 hidden sm:block"></span>
+                <button onclick="toggleDarkMode()" class="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition">
+                    <i id="themeIcon" class="fas fa-moon"></i>
                 </button>
-
-                <span id="currentTime" class="text-sm text-slate-500 dark:text-slate-400 font-mono hidden sm:block"></span>
-                <button onclick="openCreateModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-semibold transition shadow-lg shadow-blue-200 dark:shadow-none">
-                    <i class="fas fa-plus mr-2"></i> Novo Registo
+                <button onclick="openCreateModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg transition">
+                    <i class="fas fa-plus mr-2"></i> Novo Registro
                 </button>
             </div>
         </header>
 
-        <!-- Conteúdo do Dashboard -->
+        <!-- Dashboard Tab -->
         <div id="tab-dashboard" class="tab-content flex-1 overflow-y-auto p-8 custom-scroll">
-
-            <!-- KPIs -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div class="glass-card p-5 rounded-xl border-l-4 border-blue-500">
-                    <div class="flex justify-between items-start mb-2">
-                        <span class="text-slate-500 dark:text-slate-400 text-sm font-medium">Total de Incidentes</span>
-                        <i class="fas fa-list-check text-blue-500"></i>
-                    </div>
-                    <div class="text-3xl font-bold text-slate-800 dark:text-white" id="kpiTotal">0</div>
+                <div class="glass-card p-6 rounded-2xl border-b-4 border-blue-500 shadow-sm">
+                    <p class="text-slate-500 text-sm font-semibold uppercase">Total Chamados</p>
+                    <h3 class="text-4xl font-black mt-1" id="kpiTotal">0</h3>
                 </div>
-                <div class="glass-card p-5 rounded-xl border-l-4 border-red-500">
-                    <div class="flex justify-between items-start mb-2">
-                        <span class="text-slate-500 dark:text-slate-400 text-sm font-medium">Cabine c/ Mais Erros</span>
-                        <i class="fas fa-triangle-exclamation text-red-500"></i>
-                    </div>
-                    <div class="text-2xl font-bold text-slate-800 dark:text-white" id="kpiCritica">-</div>
+                <div class="glass-card p-6 rounded-2xl border-b-4 border-red-500 shadow-sm">
+                    <p class="text-slate-500 text-sm font-semibold uppercase">Pendentes</p>
+                    <h3 class="text-4xl font-black mt-1" id="kpiPendente">0</h3>
                 </div>
-                <div class="glass-card p-5 rounded-xl border-l-4 border-amber-500">
-                    <div class="flex justify-between items-start mb-2">
-                        <span class="text-slate-500 dark:text-slate-400 text-sm font-medium">Sintoma Recorrente</span>
-                        <i class="fas fa-headset text-amber-500"></i>
-                    </div>
-                    <div class="text-xl font-bold text-slate-800 dark:text-white truncate" id="kpiSintoma">-</div>
+                <div class="glass-card p-6 rounded-2xl border-b-4 border-emerald-500 shadow-sm">
+                    <p class="text-slate-500 text-sm font-semibold uppercase">Resolvidos</p>
+                    <h3 class="text-4xl font-black mt-1" id="kpiResolved">0</h3>
                 </div>
-                <div class="glass-card p-5 rounded-xl border-l-4 border-emerald-500">
-                    <div class="flex justify-between items-start mb-2">
-                        <span class="text-slate-500 dark:text-slate-400 text-sm font-medium">Resolvidos</span>
-                        <i class="fas fa-check-double text-emerald-500"></i>
-                    </div>
-                    <div class="text-3xl font-bold text-slate-800 dark:text-white" id="kpiResolved">0</div>
+                <div class="glass-card p-6 rounded-2xl border-b-4 border-amber-500 shadow-sm">
+                    <p class="text-slate-500 text-sm font-semibold uppercase">Taxa Conclusão</p>
+                    <h3 class="text-4xl font-black mt-1" id="kpiTaxa">0%</h3>
                 </div>
             </div>
 
-            <!-- Gráficos Reorganizados -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                <div class="glass-card p-6 rounded-xl">
-                    <h3 class="text-slate-700 dark:text-slate-200 font-bold mb-4">Status dos Chamados</h3>
-                    <div class="h-64">
-                        <canvas id="statusChart"></canvas>
-                    </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="glass-card p-6 rounded-2xl h-80">
+                    <canvas id="statusChart"></canvas>
                 </div>
-                <div class="glass-card p-6 rounded-xl">
-                    <h3 class="text-slate-700 dark:text-slate-200 font-bold mb-4">Volume por Cabine</h3>
-                    <div class="h-64">
-                        <canvas id="cabineChart"></canvas>
-                    </div>
-                </div>
-                <div class="lg:col-span-2 glass-card p-6 rounded-xl">
-                    <h3 class="text-slate-700 dark:text-slate-200 font-bold mb-4">Top 5 Sintomas Recorrentes</h3>
-                    <div class="h-64">
-                        <canvas id="sintomaChart"></canvas>
-                    </div>
+                <div class="glass-card p-6 rounded-2xl h-80">
+                    <canvas id="cabineChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <!-- Conteúdo de Reportes -->
+        <!-- History Tab -->
         <div id="tab-reportes" class="tab-content hidden flex-1 overflow-y-auto p-8 custom-scroll">
-            <div class="glass-card rounded-xl overflow-hidden mb-12">
-                <div class="p-6 border-b dark:border-slate-700 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                    <h3 class="text-slate-700 dark:text-slate-200 font-bold">Base de Dados Histórica</h3>
-
-                    <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-                        <select id="filterCabine" onchange="filterTable()" class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs px-3 py-2 outline-none text-slate-600 dark:text-slate-300">
-                            <option value="">Todas Cabines</option>
-                            <option>Centro</option><option>Sul</option><option>Leste</option><option>Norte/Oeste</option>
-                        </select>
-                        <select id="filterStatus" onchange="filterTable()" class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs px-3 py-2 outline-none text-slate-600 dark:text-slate-300">
-                            <option value="">Todos Status</option>
-                            <option value="Pendente">Pendente</option>
-                            <option value="Progresso">Em Progresso</option>
-                            <option value="Resolvido">Resolvido</option>
-                        </select>
-                        <div class="relative flex-1 lg:w-64">
-                            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                            <input type="text" id="tableSearch" onkeyup="filterTable()" placeholder="Pesquisar..."
-                                   class="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none text-slate-700 dark:text-slate-200">
-                        </div>
-                    </div>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left" id="incidentTable">
-                        <thead class="bg-slate-50 dark:bg-slate-900/50 border-b dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400 uppercase font-bold">
-                            <tr>
-                                <th class="px-6 py-4">ID</th>
-                                <th class="px-6 py-4">Data/Hora</th>
-                                <th class="px-6 py-4">Cabine</th>
-                                <th class="px-6 py-4">Sintoma</th>
-                                <th class="px-6 py-4">Técnico</th>
-                                <th class="px-6 py-4 text-center">Status</th>
-                                <th class="px-6 py-4 text-right">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y dark:divide-slate-700 text-sm text-slate-600 dark:text-slate-300" id="tableBody">
-                            <!-- Injeção via JS -->
-                        </tbody>
-                    </table>
-                </div>
+            <div class="glass-card rounded-2xl overflow-hidden shadow-sm">
+                <table class="w-full text-left">
+                    <thead class="bg-slate-50 dark:bg-slate-900 border-b dark:border-slate-800 text-xs font-bold uppercase text-slate-500">
+                        <tr>
+                            <th class="px-6 py-4">ID</th>
+                            <th class="px-6 py-4">Data/Hora</th>
+                            <th class="px-6 py-4">Cabine</th>
+                            <th class="px-6 py-4">Sintoma</th>
+                            <th class="px-6 py-4">Status</th>
+                            <th class="px-6 py-4 text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y dark:divide-slate-800 text-sm">
+                        <!-- Gerado via JS -->
+                    </tbody>
+                </table>
             </div>
         </div>
     </main>
 
-    <!-- Modal de Cadastro / Edição -->
+    <!-- Modal -->
     <div id="modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[95vh]">
-            <div class="p-6 border-b dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
-                <h2 id="modalTitle" class="text-xl font-bold text-slate-800 dark:text-slate-100">Registo de Incidente</h2>
-                <button onclick="toggleModal()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-xl"></i></button>
+        <div class="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-2xl p-8 shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold" id="modalTitle">Novo Registro</h2>
+                <button onclick="toggleModal()" class="text-slate-400 hover:text-red-500"><i class="fas fa-times text-xl"></i></button>
             </div>
-
-            <div class="p-8 overflow-y-auto custom-scroll">
-                <form id="incidentForm" class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <input type="hidden" id="editId">
-
-                    <div class="md:col-span-1">
-                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">Data e Hora</label>
-                        <input type="datetime-local" id="formHora" required class="w-full p-3 border dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none">
-                    </div>
-
-                    <div class="md:col-span-1">
-                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">Cabine</label>
-                        <select id="formCabine" required class="w-full p-3 border dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none">
-                            <option value="">Selecione...</option>
-                            <option>Centro</option><option>Sul</option><option>Leste</option><option>Norte/Oeste</option>
-                        </select>
-                    </div>
-
-                    <div class="md:col-span-1">
-                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">Status</label>
-                        <select id="formStatus" required class="w-full p-3 border dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none">
-                            <option value="Pendente">Pendente</option>
-                            <option value="Progresso">Em Progresso</option>
-                            <option value="Resolvido">Resolvido</option>
-                        </select>
-                    </div>
-
-                    <div class="md:col-span-2">
-                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">Sintoma Observado</label>
-                        <input type="text" id="formSintoma" placeholder="Ex: Perda de portadora" required class="w-full p-3 border dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none">
-                    </div>
-
-                    <div class="md:col-span-1">
-                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">Técnico Resp.</label>
-                        <input type="text" id="formTecnico" placeholder="Nome" required class="w-full p-3 border dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none">
-                    </div>
-
-                    <div class="md:col-span-3">
-                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">Descrição Técnica</label>
-                        <textarea id="formDescricao" placeholder="Descreva os detalhes..." required class="w-full p-3 border dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none h-20"></textarea>
-                    </div>
-
-                    <div class="md:col-span-3">
-                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">Resolução</label>
-                        <textarea id="formSolucao" placeholder="Ações tomadas..." class="w-full p-3 border dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none h-24"></textarea>
-                    </div>
-                </form>
-            </div>
-
-            <div class="p-6 border-t dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex gap-4">
-                <button onclick="saveIncident()" class="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg">
-                    GUARDAR
-                </button>
-                <button onclick="toggleModal()" class="px-6 py-3 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 rounded-xl font-bold hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-                    CANCELAR
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Eliminar -->
-    <div id="deleteModal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-sm text-center">
-            <div class="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl"><i class="fas fa-trash-can"></i></div>
-            <h3 class="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">Eliminar Registo?</h3>
-            <p class="text-slate-500 dark:text-slate-400 mb-6 text-sm">Esta ação é irreversível.</p>
-            <div class="flex gap-3">
-                <button onclick="confirmDelete()" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg font-bold transition">Eliminar</button>
-                <button onclick="closeDeleteModal()" class="flex-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-2 rounded-lg font-bold transition">Manter</button>
-            </div>
+            <form id="incidentForm" class="grid grid-cols-2 gap-4">
+                <input type="hidden" id="editId">
+                <div class="col-span-2 sm:col-span-1">
+                    <label class="block text-xs font-bold mb-2">Data/Hora</label>
+                    <input type="datetime-local" id="formHora" required class="w-full p-3 rounded-xl border dark:bg-slate-800 dark:border-slate-700">
+                </div>
+                <div class="col-span-2 sm:col-span-1">
+                    <label class="block text-xs font-bold mb-2">Cabine</label>
+                    <select id="formCabine" required class="w-full p-3 rounded-xl border dark:bg-slate-800 dark:border-slate-700">
+                        <option>Centro</option><option>Sul</option><option>Leste</option><option>Norte/Oeste</option>
+                    </select>
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-xs font-bold mb-2">Sintoma / Problema</label>
+                    <input type="text" id="formSintoma" required placeholder="Ex: Queda de sinal" class="w-full p-3 rounded-xl border dark:bg-slate-800 dark:border-slate-700">
+                </div>
+                <div class="col-span-1">
+                    <label class="block text-xs font-bold mb-2">Técnico</label>
+                    <input type="text" id="formTecnico" required class="w-full p-3 rounded-xl border dark:bg-slate-800 dark:border-slate-700">
+                </div>
+                <div class="col-span-1">
+                    <label class="block text-xs font-bold mb-2">Status Inicial</label>
+                    <select id="formStatus" class="w-full p-3 rounded-xl border dark:bg-slate-800 dark:border-slate-700">
+                        <option>Pendente</option><option>Progresso</option><option>Resolvido</option>
+                    </select>
+                </div>
+                <div class="col-span-2 flex gap-3 mt-6">
+                    <button type="button" onclick="saveIncident()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold transition shadow-lg shadow-blue-500/30">
+                        <i class="fas fa-cloud-upload-alt mr-2"></i> SALVAR NA NUVEM
+                    </button>
+                    <button type="button" onclick="toggleModal()" class="px-6 py-3 border dark:border-slate-700 rounded-xl font-bold">CANCELAR</button>
+                </div>
+            </form>
         </div>
     </div>
 
     <script>
-    // ==========================================
-	        // CONFIGURAÇÃO: COLE SUA URL DO GOOGLE AQUI
-	        // ==========================================
-	     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbybR_iG3bUOzy_4UZr2TO5pqP-uil4osX0Dap-GJAkkXli2t7fH8O84yhYto61zgpn1xw/exec";
+        // CONFIGURAÇÃO: URL da sua Web App do Google
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbybR_iG3bUOzy_4UZr2TO5pqP-uil4osX0Dap-GJAkkXli2t7fH8O84yhYto61zgpn1xw/exec";
 
-
-        let incidentes = JSON.parse(localStorage.getItem('ctel_data')) || [
-            { id: 1, hora: '2026-05-01T08:00', cabine: 'Centro', sintoma: 'Queda de Uplink', tecnico: 'Carlos', status: 'Resolvido', descricao: 'Perda total de sinal.', solucao: 'Troca de patch cord.' },
-            { id: 2, hora: '2026-05-02T10:30', cabine: 'Sul', sintoma: 'Interferência', tecnico: 'Ana', status: 'Progresso', descricao: 'Ruído excessivo.', solucao: 'Ajuste de ganho.' }
-        ];
-
-        let deleteId = null;
+        let incidentes = [];
         let charts = {};
 
         window.onload = () => {
-            if (localStorage.getItem('darkMode') === 'enabled') {
-                document.documentElement.classList.add('dark');
-                updateThemeIcon(true);
-            }
-            refreshUI();
+            if (localStorage.getItem('darkMode') === 'enabled') toggleDarkMode(true);
+            loadData();
             startTime();
         };
+
+        async function loadData() {
+            showLoader(true);
+            try {
+                const response = await fetch(SCRIPT_URL);
+                const data = await response.json();
+                incidentes = Array.isArray(data) ? data : [];
+                refreshUI();
+            } catch (e) {
+                console.error("Erro ao carregar dados da nuvem:", e);
+                alert("Falha na conexão com o banco de dados.");
+            }
+            showLoader(false);
+        }
+
+        async function saveIncident() {
+            const editId = document.getElementById('editId').value;
+            const payload = {
+                action: editId ? 'edit' : 'create',
+                id: editId,
+                hora: document.getElementById('formHora').value,
+                cabine: document.getElementById('formCabine').value,
+                status: document.getElementById('formStatus').value,
+                sintoma: document.getElementById('formSintoma').value,
+                tecnico: document.getElementById('formTecnico').value,
+                descricao: "", // Opcional
+                solucao: ""    // Opcional
+            };
+
+            showLoader(true);
+            try {
+                // Usando mode: 'no-cors' se o Google Apps Script não tiver headers de CORS configurados
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                
+                toggleModal();
+                setTimeout(loadData, 500); // Pequeno delay para a planilha processar
+            } catch (e) {
+                console.error("Erro ao salvar:", e);
+            }
+            showLoader(false);
+        }
+
+        async function confirmDelete(id) {
+            if(!confirm("Deseja realmente remover este registro da nuvem?")) return;
+            showLoader(true);
+            await fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'delete', id: id })
+            });
+            loadData();
+        }
 
         function refreshUI() {
             renderTable();
@@ -300,195 +262,124 @@
             renderCharts();
         }
 
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
-            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
-            document.getElementById(`btn-${tabId}`).classList.add('active');
-            document.getElementById('pageTitle').innerText = tabId === 'dashboard' ? 'Painel de Monitoramento' : 'Base de Dados Histórica';
-            if(tabId === 'dashboard') setTimeout(() => renderCharts(), 10);
-        }
+        function updateKPIs() {
+            const total = incidentes.length;
+            const resolvidos = incidentes.filter(i => i.status === 'Resolvido').length;
+            const pendentes = incidentes.filter(i => i.status === 'Pendente').length;
+            const taxa = total > 0 ? Math.round((resolvidos / total) * 100) : 0;
 
-        function openCreateModal() {
-            document.getElementById('incidentForm').reset();
-            document.getElementById('editId').value = "";
-            document.getElementById('modalTitle').innerText = "Novo Registo de Incidente";
-            document.getElementById('formHora').value = new Date().toISOString().slice(0, 16);
-            toggleModal();
-        }
-
-        function openEditModal(id) {
-            const inc = incidentes.find(i => i.id === id);
-            if(!inc) return;
-
-            document.getElementById('editId').value = inc.id;
-            document.getElementById('formHora').value = inc.hora;
-            document.getElementById('formCabine').value = inc.cabine;
-            document.getElementById('formStatus').value = inc.status || 'Pendente';
-            document.getElementById('formSintoma').value = inc.sintoma;
-            document.getElementById('formTecnico').value = inc.tecnico;
-            document.getElementById('formDescricao').value = inc.descricao;
-            document.getElementById('formSolucao').value = inc.solucao;
-
-            document.getElementById('modalTitle').innerText = `Editar Incidente #${id.toString().padStart(2, '0')}`;
-            toggleModal();
-        }
-
-        function toggleModal() { document.getElementById('modal').classList.toggle('hidden'); }
-
-        function saveIncident() {
-            const form = {
-                hora: document.getElementById('formHora').value,
-                cabine: document.getElementById('formCabine').value,
-                status: document.getElementById('formStatus').value,
-                sintoma: document.getElementById('formSintoma').value,
-                tecnico: document.getElementById('formTecnico').value,
-                descricao: document.getElementById('formDescricao').value,
-                solucao: document.getElementById('formSolucao').value
-            };
-
-            if(!form.hora || !form.cabine || !form.sintoma || !form.tecnico) return;
-
-            const editId = document.getElementById('editId').value;
-            if(editId) {
-                const index = incidentes.findIndex(i => i.id == editId);
-                incidentes[index] = { id: parseInt(editId), ...form };
-            } else {
-                const newId = incidentes.length > 0 ? Math.max(...incidentes.map(i => i.id)) + 1 : 1;
-                incidentes.push({ id: newId, ...form });
-            }
-
-            localStorage.setItem('ctel_data', JSON.stringify(incidentes));
-            toggleModal();
-            refreshUI();
-        }
-
-        function requestDelete(id) {
-            deleteId = id;
-            document.getElementById('deleteModal').classList.remove('hidden');
-        }
-
-        function closeDeleteModal() {
-            document.getElementById('deleteModal').classList.add('hidden');
-            deleteId = null;
-        }
-
-        function confirmDelete() {
-            incidentes = incidentes.filter(i => i.id !== deleteId);
-            localStorage.setItem('ctel_data', JSON.stringify(incidentes));
-            closeDeleteModal();
-            refreshUI();
+            document.getElementById('kpiTotal').innerText = total;
+            document.getElementById('kpiResolved').innerText = resolvidos;
+            document.getElementById('kpiPendente').innerText = pendentes;
+            document.getElementById('kpiTaxa').innerText = `${taxa}%`;
         }
 
         function renderTable() {
             const body = document.getElementById('tableBody');
-            const search = document.getElementById('tableSearch').value.toLowerCase();
-            const fCabine = document.getElementById('filterCabine').value;
-            const fStatus = document.getElementById('filterStatus').value;
             body.innerHTML = '';
-
-            const filtered = incidentes.filter(inc => {
-                const matchSearch = inc.tecnico.toLowerCase().includes(search) || inc.sintoma.toLowerCase().includes(search);
-                const matchCabine = !fCabine || inc.cabine === fCabine;
-                const matchStatus = !fStatus || inc.status === fStatus;
-                return matchSearch && matchCabine && matchStatus;
-            });
-
-            filtered.sort((a,b) => b.id - a.id).forEach(inc => {
+            incidentes.forEach(inc => {
+                const statusColor = inc.status === 'Resolvido' ? 'bg-emerald-100 text-emerald-700' : 
+                                    inc.status === 'Pendente' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700';
+                
                 body.insertAdjacentHTML('beforeend', `
-                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-900/40 transition border-b dark:border-slate-800">
-                        <td class="px-6 py-4 font-mono text-xs text-blue-500 font-bold">#${inc.id.toString().padStart(2, '0')}</td>
-                        <td class="px-6 py-4 text-slate-500 dark:text-slate-400">${new Date(inc.hora).toLocaleString('pt-BR')}</td>
-                        <td class="px-6 py-4"><span class="px-2 py-1 rounded text-[10px] font-black uppercase ${getColor(inc.cabine)}">${inc.cabine}</span></td>
-                        <td class="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">${inc.sintoma}</td>
-                        <td class="px-6 py-4">${inc.tecnico}</td>
-                        <td class="px-6 py-4 text-center">${getStatusBadge(inc.status)}</td>
-                        <td class="px-6 py-4 text-right space-x-2">
-                            <button onclick="openEditModal(${inc.id})" class="text-slate-400 hover:text-blue-500 p-2"><i class="fas fa-edit"></i></button>
-                            <button onclick="requestDelete(${inc.id})" class="text-slate-400 hover:text-red-500 p-2"><i class="fas fa-trash-alt"></i></button>
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-900/40 transition">
+                        <td class="px-6 py-4 font-mono text-blue-500 font-bold">#${inc.id}</td>
+                        <td class="px-6 py-4">${new Date(inc.hora).toLocaleString('pt-BR')}</td>
+                        <td class="px-6 py-4 font-semibold">${inc.cabine}</td>
+                        <td class="px-6 py-4 max-w-xs truncate">${inc.sintoma}</td>
+                        <td class="px-6 py-4">
+                            <span class="px-3 py-1 rounded-full text-xs font-bold ${statusColor}">${inc.status}</span>
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <button onclick="openEditModal(${inc.id})" class="p-2 text-blue-400 hover:text-blue-600"><i class="fas fa-edit"></i></button>
+                            <button onclick="confirmDelete(${inc.id})" class="p-2 text-red-400 hover:text-red-600"><i class="fas fa-trash"></i></button>
                         </td>
                     </tr>
                 `);
             });
         }
 
-        function filterTable() { renderTable(); }
-
-        function getColor(cabine) {
-            const map = { 'Centro': 'bg-blue-100 text-blue-700 dark:bg-blue-900/40', 'Sul': 'bg-red-100 text-red-700 dark:bg-red-900/40', 'Leste': 'bg-amber-100 text-amber-700 dark:bg-amber-900/40', 'Norte/Oeste': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40' };
-            return map[cabine] || 'bg-slate-100 text-slate-700';
-        }
-
-        function getStatusBadge(status) {
-            const map = { 'Resolvido': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30', 'Progresso': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30', 'Pendente': 'bg-red-100 text-red-700 dark:bg-red-900/30' };
-            return `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${map[status] || map['Pendente']}">${status || 'Pendente'}</span>`;
-        }
-
-        function updateKPIs() {
-            document.getElementById('kpiTotal').innerText = incidentes.length;
-            document.getElementById('kpiResolved').innerText = incidentes.filter(i => i.status === 'Resolvido').length;
-            const cabines = {}; const sintomas = {};
-            incidentes.forEach(i => { cabines[i.cabine] = (cabines[i.cabine] || 0) + 1; sintomas[i.sintoma] = (sintomas[i.sintoma] || 0) + 1; });
-            const topCabine = Object.entries(cabines).sort((a,b) => b[1] - a[1])[0];
-            document.getElementById('kpiCritica').innerText = topCabine ? topCabine[0] : '-';
-            const topSintoma = Object.entries(sintomas).sort((a,b) => b[1] - a[1])[0];
-            document.getElementById('kpiSintoma').innerText = topSintoma ? topSintoma[0] : '-';
-        }
-
         function renderCharts() {
-            const isDark = document.documentElement.classList.contains('dark');
-            const color = isDark ? '#94a3b8' : '#64748b';
-            const gridColor = isDark ? 'rgba(71, 85, 105, 0.2)' : 'rgba(226, 232, 240, 0.8)';
-            Object.values(charts).forEach(c => c.destroy());
+            // Limpa gráficos anteriores para não bugar ao atualizar
+            if(charts.status) charts.status.destroy();
+            if(charts.cabine) charts.cabine.destroy();
 
-            // Status (Doughnut)
-            const statusCount = { 'Pendente': 0, 'Progresso': 0, 'Resolvido': 0 };
-            incidentes.forEach(i => statusCount[i.status || 'Pendente']++);
-            charts.status = new Chart(document.getElementById('statusChart'), {
+            const ctx1 = document.getElementById('statusChart').getContext('2d');
+            const ctx2 = document.getElementById('cabineChart').getContext('2d');
+
+            const statusData = {
+                Pendente: incidentes.filter(i => i.status === 'Pendente').length,
+                Progresso: incidentes.filter(i => i.status === 'Progresso').length,
+                Resolvido: incidentes.filter(i => i.status === 'Resolvido').length
+            };
+
+            const cabines = [...new Set(incidentes.map(i => i.cabine))];
+            const cabineData = cabines.map(c => incidentes.filter(i => i.cabine === c).length);
+
+            charts.status = new Chart(ctx1, {
                 type: 'doughnut',
-                data: { labels: ['Pendente', 'Progresso', 'Resolvido'], datasets: [{ data: Object.values(statusCount), backgroundColor: ['#ef4444', '#3b82f6', '#10b981'], borderWidth: 0 }] },
-                options: { maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom', labels: { color, font: { size: 10 } } } } }
+                data: {
+                    labels: Object.keys(statusData),
+                    datasets: [{
+                        data: Object.values(statusData),
+                        backgroundColor: ['#ef4444', '#3b82f6', '#10b981'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { maintainAspectRatio: false, plugins: { title: { display: true, text: 'Distribuição de Status' } } }
             });
 
-            // Cabine (Bar)
-            const cabData = { 'Centro': 0, 'Sul': 0, 'Leste': 0, 'Norte/Oeste': 0 };
-            incidentes.forEach(i => cabData[i.cabine]++);
-            charts.cabine = new Chart(document.getElementById('cabineChart'), {
+            charts.cabine = new Chart(ctx2, {
                 type: 'bar',
-                data: { labels: Object.keys(cabData), datasets: [{ data: Object.values(cabData), backgroundColor: ['#3b82f6', '#ef4444', '#f59e0b', '#10b981'] }] },
-                options: { maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color, stepSize: 1 } }, x: { ticks: { color } } } }
-            });
-
-            // Top Sintomas (Horizontal Bar)
-            const sCount = {}; incidentes.forEach(i => sCount[i.sintoma] = (sCount[i.sintoma] || 0) + 1);
-            const topS = Object.entries(sCount).sort((a,b) => b[1]-a[1]).slice(0,5);
-            charts.sintoma = new Chart(document.getElementById('sintomaChart'), {
-                type: 'bar',
-                data: { labels: topS.map(s => s[0]), datasets: [{ data: topS.map(s => s[1]), backgroundColor: '#6366f1' }] },
-                options: { indexAxis: 'y', maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, grid: { color: gridColor }, ticks: { color, stepSize: 1 } }, y: { ticks: { color } } } }
+                data: {
+                    labels: cabines,
+                    datasets: [{
+                        label: 'Incidentes',
+                        data: cabineData,
+                        backgroundColor: '#6366f1',
+                        borderRadius: 8
+                    }]
+                },
+                options: { maintainAspectRatio: false, plugins: { title: { display: true, text: 'Volume por Cabine' } } }
             });
         }
 
-        function exportToCSV() {
-            const headers = ['ID;Data;Cabine;Sintoma;Tecnico;Status;Descricao;Solucao'];
-            const rows = incidentes.map(i => [i.id, i.hora, i.cabine, i.sintoma, i.tecnico, i.status, i.descricao, i.solucao].join(';'));
-            const csv = [headers, ...rows].join('\n');
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const a = document.createElement('a');
-            a.href = window.URL.createObjectURL(blob);
-            a.download = `ctel_export_${new Date().getTime()}.csv`;
-            a.click();
+        // Helpers de Interface
+        function showLoader(show) { document.getElementById('loader').style.display = show ? 'block' : 'none'; }
+        function toggleModal() { document.getElementById('modal').classList.toggle('hidden'); }
+        
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            document.getElementById(`btn-${tabId}`).classList.add('active');
+            document.getElementById('pageTitle').innerText = tabId === 'dashboard' ? 'Painel de Monitoramento' : 'Histórico de Registros';
         }
 
-        function toggleDarkMode() {
-            const isDark = document.documentElement.classList.toggle('dark');
+        function openCreateModal() {
+            document.getElementById('incidentForm').reset();
+            document.getElementById('editId').value = "";
+            document.getElementById('modalTitle').innerText = "Novo Registro";
+            document.getElementById('formHora').value = new Date().toISOString().slice(0,16);
+            toggleModal();
+        }
+
+        function openEditModal(id) {
+            const inc = incidentes.find(i => i.id == id);
+            document.getElementById('editId').value = inc.id;
+            document.getElementById('formHora').value = inc.hora;
+            document.getElementById('formCabine').value = inc.cabine;
+            document.getElementById('formStatus').value = inc.status;
+            document.getElementById('formSintoma').value = inc.sintoma;
+            document.getElementById('formTecnico').value = inc.tecnico;
+            document.getElementById('modalTitle').innerText = "Editar Registro #" + id;
+            toggleModal();
+        }
+
+        function toggleDarkMode(force) {
+            const isDark = force || document.documentElement.classList.toggle('dark');
             localStorage.setItem('darkMode', isDark ? 'enabled' : 'disabled');
-            updateThemeIcon(isDark);
-            setTimeout(() => renderCharts(), 100);
-        }
-
-        function updateThemeIcon(isDark) {
-            document.getElementById('themeIcon').className = isDark ? 'fas fa-sun text-lg text-yellow-400' : 'fas fa-moon text-lg text-slate-500';
+            document.getElementById('themeIcon').className = isDark ? 'fas fa-sun' : 'fas fa-moon';
         }
 
         function startTime() {
