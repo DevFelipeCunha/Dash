@@ -127,7 +127,7 @@
         <!-- History Tab -->
         <div id="tab-reportes" class="tab-content hidden flex-1 overflow-y-auto p-8 custom-scroll">
             <div class="glass-card rounded-2xl overflow-hidden shadow-sm">
-                <table class="w-full text-left">
+                <table class="w-full text-left border-collapse">
                     <thead class="bg-slate-50 dark:bg-slate-900 border-b dark:border-slate-800 text-xs font-bold uppercase text-slate-500">
                         <tr>
                             <th class="px-6 py-4">ID</th>
@@ -146,51 +146,66 @@
         </div>
     </main>
 
-    <!-- Modal -->
+    <!-- Modal Form Atualizado -->
     <div id="modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-2xl p-8 shadow-2xl">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-2xl p-8 shadow-2xl max-h-[90vh] overflow-y-auto custom-scroll">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold" id="modalTitle">Novo Registro</h2>
-                <button onclick="toggleModal()" class="text-slate-400 hover:text-red-500"><i class="fas fa-times text-xl"></i></button>
+                <button onclick="toggleModal()" class="text-slate-400 hover:text-red-500 transition"><i class="fas fa-times text-xl"></i></button>
             </div>
             <form id="incidentForm" class="grid grid-cols-2 gap-4">
                 <input type="hidden" id="editId">
+                
                 <div class="col-span-2 sm:col-span-1">
-                    <label class="block text-xs font-bold mb-2">Data/Hora</label>
-                    <input type="datetime-local" id="formHora" required class="w-full p-3 rounded-xl border dark:bg-slate-800 dark:border-slate-700">
+                    <label class="block text-xs font-bold mb-1">Data/Hora</label>
+                    <input type="datetime-local" id="formHora" required class="w-full p-2.5 rounded-xl border dark:bg-slate-800 dark:border-slate-700">
                 </div>
+                
                 <div class="col-span-2 sm:col-span-1">
-                    <label class="block text-xs font-bold mb-2">Cabine</label>
-                    <select id="formCabine" required class="w-full p-3 rounded-xl border dark:bg-slate-800 dark:border-slate-700">
+                    <label class="block text-xs font-bold mb-1">Cabine</label>
+                    <select id="formCabine" required class="w-full p-2.5 rounded-xl border dark:bg-slate-800 dark:border-slate-700">
                         <option>Centro</option><option>Sul</option><option>Leste</option><option>Norte/Oeste</option>
                     </select>
                 </div>
+                
                 <div class="col-span-2">
-                    <label class="block text-xs font-bold mb-2">Sintoma / Problema</label>
-                    <input type="text" id="formSintoma" required placeholder="Ex: Queda de sinal" class="w-full p-3 rounded-xl border dark:bg-slate-800 dark:border-slate-700">
+                    <label class="block text-xs font-bold mb-1">Sintoma (Resumo)</label>
+                    <input type="text" id="formSintoma" required placeholder="Ex: Queda de sinal" class="w-full p-2.5 rounded-xl border dark:bg-slate-800 dark:border-slate-700">
                 </div>
-                <div class="col-span-1">
-                    <label class="block text-xs font-bold mb-2">Técnico</label>
-                    <input type="text" id="formTecnico" required class="w-full p-3 rounded-xl border dark:bg-slate-800 dark:border-slate-700">
+
+                <div class="col-span-2">
+                    <label class="block text-xs font-bold mb-1">Descrição Detalhada do Problema</label>
+                    <textarea id="formDescricao" placeholder="Descreva o que está acontecendo..." class="w-full p-2.5 rounded-xl border dark:bg-slate-800 dark:border-slate-700 h-20 resize-none"></textarea>
                 </div>
+                
+                <div class="col-span-2">
+                    <label class="block text-xs font-bold mb-1 text-emerald-600 dark:text-emerald-400">Resolução / Solução Aplicada</label>
+                    <textarea id="formSolucao" placeholder="O que foi feito para resolver?" class="w-full p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-900/30 dark:bg-slate-800 h-20 resize-none"></textarea>
+                </div>
+
                 <div class="col-span-1">
-                    <label class="block text-xs font-bold mb-2">Status Inicial</label>
-                    <select id="formStatus" class="w-full p-3 rounded-xl border dark:bg-slate-800 dark:border-slate-700">
+                    <label class="block text-xs font-bold mb-1">Técnico Responsável</label>
+                    <input type="text" id="formTecnico" required class="w-full p-2.5 rounded-xl border dark:bg-slate-800 dark:border-slate-700">
+                </div>
+                
+                <div class="col-span-1">
+                    <label class="block text-xs font-bold mb-1">Status Atual</label>
+                    <select id="formStatus" class="w-full p-2.5 rounded-xl border dark:bg-slate-800 dark:border-slate-700">
                         <option>Pendente</option><option>Progresso</option><option>Resolvido</option>
                     </select>
                 </div>
-                <div class="col-span-2 flex gap-3 mt-6">
+                
+                <div class="col-span-2 flex gap-3 mt-4">
                     <button type="button" onclick="saveIncident()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold transition shadow-lg shadow-blue-500/30">
                         <i class="fas fa-cloud-upload-alt mr-2"></i> SALVAR NA NUVEM
                     </button>
-                    <button type="button" onclick="toggleModal()" class="px-6 py-3 border dark:border-slate-700 rounded-xl font-bold">CANCELAR</button>
+                    <button type="button" onclick="toggleModal()" class="px-6 py-3 border dark:border-slate-700 rounded-xl font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition">CANCELAR</button>
                 </div>
             </form>
         </div>
     </div>
 
     <script>
-        // CONFIGURAÇÃO: URL da sua Web App do Google
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbybR_iG3bUOzy_4UZr2TO5pqP-uil4osX0Dap-GJAkkXli2t7fH8O84yhYto61zgpn1xw/exec";
 
         let incidentes = [];
@@ -210,8 +225,7 @@
                 incidentes = Array.isArray(data) ? data : [];
                 refreshUI();
             } catch (e) {
-                console.error("Erro ao carregar dados da nuvem:", e);
-                alert("Falha na conexão com o banco de dados.");
+                console.error("Erro ao carregar dados:", e);
             }
             showLoader(false);
         }
@@ -226,28 +240,27 @@
                 status: document.getElementById('formStatus').value,
                 sintoma: document.getElementById('formSintoma').value,
                 tecnico: document.getElementById('formTecnico').value,
-                descricao: "", // Opcional
-                solucao: ""    // Opcional
+                descricao: document.getElementById('formDescricao').value, // NOVO
+                solucao: document.getElementById('formSolucao').value      // NOVO
             };
 
             showLoader(true);
             try {
-                // Usando mode: 'no-cors' se o Google Apps Script não tiver headers de CORS configurados
                 await fetch(SCRIPT_URL, {
                     method: 'POST',
                     body: JSON.stringify(payload)
                 });
-                
                 toggleModal();
-                setTimeout(loadData, 500); // Pequeno delay para a planilha processar
+                setTimeout(loadData, 800);
             } catch (e) {
                 console.error("Erro ao salvar:", e);
+                alert("Erro ao salvar dados.");
             }
             showLoader(false);
         }
 
         async function confirmDelete(id) {
-            if(!confirm("Deseja realmente remover este registro da nuvem?")) return;
+            if(!confirm("Remover este registro permanentemente da nuvem?")) return;
             showLoader(true);
             await fetch(SCRIPT_URL, {
                 method: 'POST',
@@ -286,13 +299,13 @@
                         <td class="px-6 py-4 font-mono text-blue-500 font-bold">#${inc.id}</td>
                         <td class="px-6 py-4">${new Date(inc.hora).toLocaleString('pt-BR')}</td>
                         <td class="px-6 py-4 font-semibold">${inc.cabine}</td>
-                        <td class="px-6 py-4 max-w-xs truncate">${inc.sintoma}</td>
+                        <td class="px-6 py-4 max-w-xs truncate" title="${inc.sintoma}">${inc.sintoma}</td>
                         <td class="px-6 py-4">
                             <span class="px-3 py-1 rounded-full text-xs font-bold ${statusColor}">${inc.status}</span>
                         </td>
                         <td class="px-6 py-4 text-right">
-                            <button onclick="openEditModal(${inc.id})" class="p-2 text-blue-400 hover:text-blue-600"><i class="fas fa-edit"></i></button>
-                            <button onclick="confirmDelete(${inc.id})" class="p-2 text-red-400 hover:text-red-600"><i class="fas fa-trash"></i></button>
+                            <button onclick="openEditModal(${inc.id})" class="p-2 text-blue-400 hover:text-blue-600 transition"><i class="fas fa-edit"></i></button>
+                            <button onclick="confirmDelete(${inc.id})" class="p-2 text-red-400 hover:text-red-600 transition"><i class="fas fa-trash"></i></button>
                         </td>
                     </tr>
                 `);
@@ -300,7 +313,6 @@
         }
 
         function renderCharts() {
-            // Limpa gráficos anteriores para não bugar ao atualizar
             if(charts.status) charts.status.destroy();
             if(charts.cabine) charts.cabine.destroy();
 
@@ -344,7 +356,6 @@
             });
         }
 
-        // Helpers de Interface
         function showLoader(show) { document.getElementById('loader').style.display = show ? 'block' : 'none'; }
         function toggleModal() { document.getElementById('modal').classList.toggle('hidden'); }
         
@@ -372,6 +383,8 @@
             document.getElementById('formStatus').value = inc.status;
             document.getElementById('formSintoma').value = inc.sintoma;
             document.getElementById('formTecnico').value = inc.tecnico;
+            document.getElementById('formDescricao').value = inc.descricao || ""; // PREENCHE DESCRIÇÃO
+            document.getElementById('formSolucao').value = inc.solucao || "";     // PREENCHE SOLUÇÃO
             document.getElementById('modalTitle').innerText = "Editar Registro #" + id;
             toggleModal();
         }
