@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTEL Analytics - Gestão em Nuvem</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        .dark .glass-card {
+            background: rgba(30, 41, 59, 0.8);
+            border-color: rgba(71, 85, 105, 0.5);
+            color: #f1f5f9;
+        }
+        .sidebar { background: #0f172a; }
+        .nav-link.active {
+            background: rgba(37, 99, 235, 0.2);
+            color: #60a5fa;
+            border: 1px solid rgba(37, 99, 235, 0.3);
+        }
+        /* Loader de carregamento */
+        #loader {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 4px;
+            background: #3b82f6;
+            z-index: 100;
+            animation: loading 2s infinite;
+        }
+        @keyframes loading {
+            0% { width: 0; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden bg-slate-100 dark:bg-slate-950">
+
+    <div id="loader"></div>
+
+    <!-- Sidebar Lateral -->
+    <aside class="sidebar w-64 hidden md:flex flex-col text-slate-300">
+        <div class="p-6 text-center border-b border-slate-800">
+            <div class="flex items-center justify-center gap-3 text-white mb-2">
+                <i class="fas fa-tower-broadcast text-2xl text-blue-500"></i>
+                <span class="font-bold text-xl tracking-tight">CTEL Admin</span>
+            </div>
+            <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-slate-700">CLOUD DATABASE</span>
+        </div>
+        <div class="p-6 flex-1">
+            <nav class="space-y-2">
+                <button onclick="switchTab('dashboard')" id="btn-dashboard" class="nav-link w-full flex items-center gap-3 p-3 rounded-lg transition active">
+                    <i class="fas fa-chart-pie"></i> Painel Geral
+                </button>
+                <button onclick="switchTab('reportes')" id="btn-reportes" class="nav-link w-full flex items-center gap-3 p-3 hover:bg-slate-800 rounded-lg transition">
+                    <i class="fas fa-file-invoice"></i> Histórico
+                </button>
+            </nav>
+        </div>
+        <div class="p-6 border-t border-slate-800 text-xs">
+            <button onclick="exportToCSV()" class="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 p-2 rounded transition mb-4">
+                <i class="fas fa-file-export"></i> Exportar CSV
+            </button>
+            <p class="text-slate-500">© 2026 CTEL Analytics</p>
+        </div>
+    </aside>
+
+    <!-- Área Principal -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+
+        <!-- Header -->
+        <header class="h-16 glass-card flex items-center justify-between px-8 z-10 dark:bg-slate-900/90 dark:text-white">
+            <h1 id="pageTitle" class="font-semibold text-slate-700 dark:text-slate-200">Painel de Monitoramento</h1>
+            <div class="flex items-center gap-6">
+                <button onclick="toggleDarkMode()" class="text-slate-500 dark:text-slate-400 hover:text-blue-500 transition-colors p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800">
+                    <i id="themeIcon" class="fas fa-moon text-lg"></i>
+                </button>
+
+                <span id="currentTime" class="text-sm text-slate-500 dark:text-slate-400 font-mono hidden sm:block"></span>
+                <button onclick="openCreateModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-semibold transition shadow-lg">
+                    <i class="fas fa-plus mr-2"></i> Novo Registo
+                </button>
+            </div>
+        </header>
+
+        <!-- Dashboard -->
+        <div id="tab-dashboard" class="tab-content flex-1 overflow-y-auto p-8">
+            <!-- KPIs -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="glass-card p-5 rounded-xl border-l-4 border-blue-500">
+                    <span class="text-slate-500 text-sm">Total Incidentes</span>
+                    <div class="text-3xl font-bold" id="kpiTotal">0</div>
+                </div>
+                <div class="glass-card p-5 rounded-xl border-l-4 border-red-500">
+                    <span class="text-slate-500 text-sm">Mais Crítica</span>
+                    <div class="text-2xl font-bold" id="kpiCritica">-</div>
+                </div>
+                <div class="glass-card p-5 rounded-xl border-l-4 border-amber-500">
+                    <span class="text-slate-500 text-sm">Sintoma Comum</span>
+                    <div class="text-xl font-bold truncate" id="kpiSintoma">-</div>
+                </div>
+                <div class="glass-card p-5 rounded-xl border-l-4 border-emerald-500">
+                    <span class="text-slate-500 text-sm">Resolvidos</span>
+                    <div class="text-3xl font-bold" id="kpiResolved">0</div>
+                </div>
+            </div>
+
+            <!-- Gráficos -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div class="glass-card p-6 rounded-xl h-80"><canvas id="statusChart"></canvas></div>
+                <div class="glass-card p-6 rounded-xl h-80"><canvas id="cabineChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Tabela -->
+        <div id="tab-reportes" class="tab-content hidden flex-1 overflow-y-auto p-8">
+            <div class="glass-card rounded-xl overflow-hidden">
+                <table class="w-full text-left">
+                    <thead class="bg-slate-50 dark:bg-slate-900/50 border-b dark:border-slate-700 text-xs uppercase font-bold">
+                        <tr>
+                            <th class="px-6 py-4">ID</th>
+                            <th class="px-6 py-4">Data/Hora</th>
+                            <th class="px-6 py-4">Cabine</th>
+                            <th class="px-6 py-4">Sintoma</th>
+                            <th class="px-6 py-4 text-center">Status</th>
+                            <th class="px-6 py-4 text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y dark:divide-slate-700 text-sm"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Form -->
+    <div id="modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-2xl p-8">
+            <form id="incidentForm" class="grid grid-cols-2 gap-4">
+                <input type="hidden" id="editId">
+                <div class="col-span-2 sm:col-span-1">
+                    <label class="block text-xs font-bold mb-2">Data/Hora</label>
+                    <input type="datetime-local" id="formHora" required class="w-full p-2 border rounded dark:bg-slate-800">
+                </div>
+                <div class="col-span-2 sm:col-span-1">
+                    <label class="block text-xs font-bold mb-2">Cabine</label>
+                    <select id="formCabine" required class="w-full p-2 border rounded dark:bg-slate-800">
+                        <option>Centro</option><option>Sul</option><option>Leste</option><option>Norte/Oeste</option>
+                    </select>
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-xs font-bold mb-2">Sintoma</label>
+                    <input type="text" id="formSintoma" required class="w-full p-2 border rounded dark:bg-slate-800">
+                </div>
+                <div class="col-span-1">
+                    <label class="block text-xs font-bold mb-2">Técnico</label>
+                    <input type="text" id="formTecnico" required class="w-full p-2 border rounded dark:bg-slate-800">
+                </div>
+                <div class="col-span-1">
+                    <label class="block text-xs font-bold mb-2">Status</label>
+                    <select id="formStatus" class="w-full p-2 border rounded dark:bg-slate-800">
+                        <option>Pendente</option><option>Progresso</option><option>Resolvido</option>
+                    </select>
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-xs font-bold mb-2">Descrição</label>
+                    <textarea id="formDescricao" class="w-full p-2 border rounded dark:bg-slate-800 h-20"></textarea>
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-xs font-bold mb-2">Resolução</label>
+                    <textarea id="formSolucao" class="w-full p-2 border rounded dark:bg-slate-800 h-20"></textarea>
+                </div>
+                <div class="col-span-2 flex gap-2 mt-4">
+                    <button type="button" onclick="saveIncident()" class="flex-1 bg-blue-600 text-white py-2 rounded font-bold">SALVAR NA PLANILHA</button>
+                    <button type="button" onclick="toggleModal()" class="px-4 py-2 border rounded">CANCELAR</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // CONFIGURAÇÃO: COLE SUA URL DO GOOGLE AQUI
+        // ==========================================
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbybR_iG3bUOzy_4UZr2TO5pqP-uil4osX0Dap-GJAkkXli2t7fH8O84yhYto61zgpn1xw/exec";
+
+        let incidentes = [];
+        let charts = {};
+
+        window.onload = () => {
+            if (localStorage.getItem('darkMode') === 'enabled') toggleDarkMode(true);
+            loadData();
+            startTime();
+        };
+
+        async function loadData() {
+            showLoader(true);
+            try {
+                const response = await fetch(SCRIPT_URL);
+                incidentes = await response.json();
+                refreshUI();
+            } catch (e) {
+                console.error("Erro ao carregar dados", e);
+            }
+            showLoader(false);
+        }
+
+        async function saveIncident() {
+            const editId = document.getElementById('editId').value;
+            const payload = {
+                action: editId ? 'edit' : 'create',
+                id: editId,
+                hora: document.getElementById('formHora').value,
+                cabine: document.getElementById('formCabine').value,
+                status: document.getElementById('formStatus').value,
+                sintoma: document.getElementById('formSintoma').value,
+                tecnico: document.getElementById('formTecnico').value,
+                descricao: document.getElementById('formDescricao').value,
+                solucao: document.getElementById('formSolucao').value
+            };
+
+            showLoader(true);
+            await fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+            
+            toggleModal();
+            await loadData();
+        }
+
+        async function confirmDelete(id) {
+            if(!confirm("Deseja realmente excluir este registro da planilha?")) return;
+            showLoader(true);
+            await fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'delete', id: id })
+            });
+            await loadData();
+        }
+
+        function refreshUI() {
+            renderTable();
+            updateKPIs();
+            renderCharts();
+        }
+
+        function renderTable() {
+            const body = document.getElementById('tableBody');
+            body.innerHTML = '';
+            incidentes.forEach(inc => {
+                body.insertAdjacentHTML('beforeend', `
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-900/40 border-b dark:border-slate-800">
+                        <td class="px-6 py-4 font-mono text-blue-500">#${String(inc.id).padStart(2, '0')}</td>
+                        <td class="px-6 py-4">${new Date(inc.hora).toLocaleString()}</td>
+                        <td class="px-6 py-4 font-bold">${inc.cabine}</td>
+                        <td class="px-6 py-4">${inc.sintoma}</td>
+                        <td class="px-6 py-4 text-center">${inc.status}</td>
+                        <td class="px-6 py-4 text-right">
+                            <button onclick="openEditModal(${inc.id})" class="text-blue-400 mr-2"><i class="fas fa-edit"></i></button>
+                            <button onclick="confirmDelete(${inc.id})" class="text-red-400"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `);
+            });
+        }
+
+        function updateKPIs() {
+            document.getElementById('kpiTotal').innerText = incidentes.length;
+            document.getElementById('kpiResolved').innerText = incidentes.filter(i => i.status === 'Resolvido').length;
+        }
+
+        function renderCharts() {
+            Object.values(charts).forEach(c => c.destroy());
+            const ctx1 = document.getElementById('statusChart').getContext('2d');
+            const statusCounts = [
+                incidentes.filter(i => i.status === 'Pendente').length,
+                incidentes.filter(i => i.status === 'Progresso').length,
+                incidentes.filter(i => i.status === 'Resolvido').length
+            ];
+            
+            charts.status = new Chart(ctx1, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Pendente', 'Progresso', 'Resolvido'],
+                    datasets: [{ data: statusCounts, backgroundColor: ['#ef4444', '#3b82f6', '#10b981'] }]
+                },
+                options: { maintainAspectRatio: false, plugins: { title: { display: true, text: 'Status dos Chamados' } } }
+            });
+        }
+
+        function showLoader(show) { document.getElementById('loader').style.display = show ? 'block' : 'none'; }
+        function toggleModal() { document.getElementById('modal').classList.toggle('hidden'); }
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+        }
+        function openCreateModal() {
+            document.getElementById('incidentForm').reset();
+            document.getElementById('editId').value = "";
+            document.getElementById('formHora').value = new Date().toISOString().slice(0,16);
+            toggleModal();
+        }
+        function openEditModal(id) {
+            const inc = incidentes.find(i => i.id == id);
+            document.getElementById('editId').value = inc.id;
+            document.getElementById('formHora').value = inc.hora;
+            document.getElementById('formCabine').value = inc.cabine;
+            document.getElementById('formStatus').value = inc.status;
+            document.getElementById('formSintoma').value = inc.sintoma;
+            document.getElementById('formTecnico').value = inc.tecnico;
+            document.getElementById('formDescricao').value = inc.descricao;
+            document.getElementById('formSolucao').value = inc.solucao;
+            toggleModal();
+        }
+        function toggleDarkMode(force) {
+            const isDark = force || document.documentElement.classList.toggle('dark');
+            localStorage.setItem('darkMode', isDark ? 'enabled' : 'disabled');
+        }
+        function startTime() {
+            document.getElementById('currentTime').innerText = new Date().toLocaleString();
+            setTimeout(startTime, 1000);
+        }
+    </script>
+</body>
+</html>
